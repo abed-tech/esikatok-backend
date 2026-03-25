@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <linearGradient id="gc-maison" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="50%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="gc-toit" x1="0" y1="0" x2="1" y2="0.5">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="gc-play" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="60%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+    <filter id="gc-glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <g filter="url(#gc-glow)">
+    <path d="M100 28 L38 78 L48 78 L48 160 L152 160 L152 78 L162 78 Z"
+          stroke="url(#gc-maison)" stroke-width="5.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="130" y="44" width="16" height="30" rx="2" stroke="url(#gc-toit)" stroke-width="4" fill="none"/>
+    <rect x="90" y="62" width="20" height="18" rx="2" stroke="url(#gc-toit)" stroke-width="3" fill="none"/>
+    <line x1="100" y1="62" x2="100" y2="80" stroke="url(#gc-toit)" stroke-width="2"/>
+    <line x1="90" y1="71" x2="110" y2="71" stroke="url(#gc-toit)" stroke-width="2"/>
+  </g>
+  <g filter="url(#gc-glow)">
+    <polygon points="82,102 82,150 125,126" fill="url(#gc-play)" opacity="0.9"/>
+  </g>
+</svg>

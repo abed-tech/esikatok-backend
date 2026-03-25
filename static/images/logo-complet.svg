@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260" fill="none">
+  <defs>
+    <linearGradient id="grad-maison" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="50%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="grad-toit" x1="0" y1="0" x2="1" y2="0.5">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="grad-play" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="60%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="glow-soft">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Maison - contour avec dégradé -->
+  <g filter="url(#glow)">
+    <!-- Toit -->
+    <path d="M100 22 L38 72 L48 72 L48 148 L88 148 L88 148 L152 148 L152 72 L162 72 Z"
+          stroke="url(#grad-maison)" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Cheminée -->
+    <rect x="130" y="38" width="16" height="30" rx="2"
+          stroke="url(#grad-toit)" stroke-width="4" fill="none"/>
+    <!-- Fenêtre -->
+    <rect x="90" y="56" width="20" height="18" rx="2"
+          stroke="url(#grad-toit)" stroke-width="3" fill="none"/>
+    <line x1="100" y1="56" x2="100" y2="74" stroke="url(#grad-toit)" stroke-width="2"/>
+    <line x1="90" y1="65" x2="110" y2="65" stroke="url(#grad-toit)" stroke-width="2"/>
+  </g>
+
+  <!-- Bouton Play -->
+  <g filter="url(#glow)">
+    <polygon points="82,95 82,140 122,117.5"
+             fill="url(#grad-play)" opacity="0.9"/>
+  </g>
+
+  <!-- Texte EsikaTok -->
+  <text x="100" y="195" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-weight="700" font-size="36" fill="white" letter-spacing="-0.5">
+    <tspan fill="white">Esika</tspan><tspan fill="#ef4444">Tok</tspan>
+  </text>
+</svg>

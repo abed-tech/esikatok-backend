@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <filter id="gm-glow">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <g filter="url(#gm-glow)" opacity="0.85">
+    <path d="M100 28 L38 78 L48 78 L48 160 L152 160 L152 78 L162 78 Z"
+          stroke="#94a3b8" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="130" y="44" width="16" height="30" rx="2" stroke="#64748b" stroke-width="3.5" fill="none"/>
+    <rect x="90" y="62" width="20" height="18" rx="2" stroke="#64748b" stroke-width="2.5" fill="none"/>
+    <line x1="100" y1="62" x2="100" y2="80" stroke="#64748b" stroke-width="2"/>
+    <line x1="90" y1="71" x2="110" y2="71" stroke="#64748b" stroke-width="2"/>
+  </g>
+  <g filter="url(#gm-glow)">
+    <polygon points="82,102 82,150 125,126" fill="#60a5fa" opacity="0.7"/>
+  </g>
+</svg>
