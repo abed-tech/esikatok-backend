@@ -288,7 +288,10 @@ git push -u origin main
 3. Remplir les paramètres :
    - **Name** : `esikatok-api`
    - **Region** : même région que la base PostgreSQL
-   - **Root Directory** : laisser vide si le dépôt contient uniquement le backend, sinon mettre `EsikaTok/backend`
+   - **Root Directory** : **dépend de la structure de votre dépôt GitHub** :
+     - Si `manage.py` est **à la racine** du dépôt → **laisser vide**
+     - Si le dépôt contient `EsikaTok/backend/manage.py` → mettre `EsikaTok/backend`
+     - ⚠️ **Erreur courante** : si vous voyez `Root directory "backend" does not exist`, c'est que le chemin indiqué ne correspond pas à la structure réelle du dépôt. Vérifiez sur GitHub où se trouve `manage.py` et ajustez.
    - **Runtime** : `Python 3`
    - **Build Command** :
      ```bash
@@ -317,11 +320,11 @@ Dans l'onglet **Environment** du Web Service, ajouter chaque variable :
 | `DB_PASSWORD` | *(mot de passe copié)* | Depuis l'info PostgreSQL Render |
 | `DB_HOST` | `dpg-xxxxx-a.frankfurt-postgres.render.com` | **Internal Hostname** de la base |
 | `DB_PORT` | `5432` | |
-| `CORS_ALLOWED_ORIGINS` | `https://esikatok.netlify.app,https://esikatok-admin.netlify.app` | URLs de vos frontends déployés |
-| `CSRF_TRUSTED_ORIGINS` | `https://esikatok.netlify.app,https://esikatok-admin.netlify.app,https://esikatok-api.onrender.com` | |
+| `CORS_ALLOWED_ORIGINS` | `https://esikatok-frontend.onrender.com,https://esikatok-admin.onrender.com` | URLs de vos frontends Render |
+| `CSRF_TRUSTED_ORIGINS` | `https://esikatok-frontend.onrender.com,https://esikatok-admin.onrender.com,https://esikatok-api.onrender.com` | |
 | `API_BASE_URL` | `https://esikatok-api.onrender.com` | |
-| `FRONTEND_URL` | `https://esikatok.netlify.app` | |
-| `ADMIN_FRONTEND_URL` | `https://esikatok-admin.netlify.app` | |
+| `FRONTEND_URL` | `https://esikatok-frontend.onrender.com` | |
+| `ADMIN_FRONTEND_URL` | `https://esikatok-admin.onrender.com` | |
 | `STORAGE_BACKEND` | `s3` | Voir section C (hébergement vidéo) |
 | `VIDEO_S3_BUCKET` | *(nom du bucket)* | Voir section C |
 | `VIDEO_S3_REGION` | *(région)* | Voir section C |
@@ -353,47 +356,84 @@ Réponse attendue : `{"status": "ok"}`
 
 ---
 
-### B. Déployer le Frontend sur Netlify (étape par étape)
+### B. Déployer les Frontends sur Render Static Site (dépôts séparés)
 
-Le frontend utilisateur est actuellement intégré dans le backend (`templates/utilisateur/index.html` + `static/utilisateur/`). Pour le déployer séparément sur Netlify, il faut l'extraire.
+Les frontends ont été extraits du backend et sont prêts à être déployés. Ils se trouvent au même niveau que `backend/` :
 
-#### Étape B.1 — Créer un dépôt frontend
+```
+EsikaTok/
+├── backend/                    ← Dépôt 1 : API Django (Render Web Service)
+├── esikatok-frontend/          ← Dépôt 2 : SPA Utilisateur (Render Static Site)
+└── esikatok-admin/             ← Dépôt 3 : SPA Administration (Render Static Site)
+```
 
-Créer un nouveau dossier et dépôt Git pour le frontend :
+> **Architecture finale** : 3 dépôts GitHub → 3 services Render
+> - `esikatok-backend` → **Web Service** (API Django)
+> - `esikatok-frontend` → **Static Site** (SPA Utilisateur)
+> - `esikatok-admin` → **Static Site** (SPA Administration)
+
+---
+
+#### Étape B.1 — Vérifier la structure du frontend utilisateur (déjà extrait)
+
+Le dossier `esikatok-frontend/` est prêt avec cette structure :
 
 ```
 esikatok-frontend/
-├── index.html                  ← copie de templates/utilisateur/index.html
-├── js/                         ← copie de static/utilisateur/js/
-│   ├── api.js
-│   ├── app.js
-│   └── pages/
-├── _redirects                  ← fichier Netlify (routing SPA)
-└── netlify.toml                ← configuration Netlify
+├── .gitignore
+├── index.html                  ← SPA utilisateur (HTML pur, sans tags Django)
+├── js/                         ← 19 fichiers JavaScript
+│   ├── api.js                  ← Client API (fetch vers le backend)
+│   ├── etat.js                 ← Gestion de l'état global
+│   ├── composants.js           ← Composants réutilisables
+│   ├── app.js                  ← Routeur principal
+│   ├── badge-manager.js        ← Gestionnaire de badges/notifications
+│   ├── page-feed.js            ← Fil de vidéos
+│   ├── page-recherche.js       ← Recherche
+│   ├── page-feed-recherche.js  ← Résultats de recherche
+│   ├── page-detail.js          ← Détail d'un bien
+│   ├── page-connexion.js       ← Connexion / inscription
+│   ├── page-inbox.js           ← Boîte de réception
+│   ├── page-message.js         ← Conversation
+│   ├── page-favoris.js         ← Favoris
+│   ├── page-publier.js         ← Publier un bien
+│   ├── page-profil.js          ← Profil utilisateur
+│   ├── page-aide.js            ← Page d'aide
+│   ├── page-agent.js           ← Espace agent
+│   ├── page-carte.js           ← Vue carte
+│   └── pages.js                ← Index des pages
+├── images/                     ← Logos SVG
+│   ├── logo-compact.svg
+│   ├── logo-complet.svg
+│   └── logo-monochrome.svg
+└── render.yaml                 ← Configuration Render (auto-détection)
 ```
 
+> **Important** : les tags Django `{% static '...' %}` ont été remplacés par des chemins relatifs (`js/...`). Le fichier est prêt pour un hébergement statique.
+
+Pour pousser sur GitHub :
+
 ```bash
-# Créer le dossier
-mkdir esikatok-frontend
 cd esikatok-frontend
-
-# Copier les fichiers depuis le backend
-cp ../backend/templates/utilisateur/index.html .
-cp -r ../backend/static/utilisateur/js ./js
-
-# Initialiser le dépôt
 git init
 git add .
-git commit -m "Initial commit - Frontend Utilisateur"
+git commit -m "Initial commit - Frontend Utilisateur EsikaTok"
+
+# Créer un dépôt sur GitHub (https://github.com/new), puis :
 git remote add origin https://github.com/VOTRE-COMPTE/esikatok-frontend.git
+git branch -M main
 git push -u origin main
 ```
 
-#### Étape B.2 — Configurer l'URL de l'API
+#### Étape B.2 — Configurer l'URL de l'API dans le frontend
 
 Dans le fichier `index.html` du frontend, mettre à jour la balise meta pour pointer vers le backend Render :
 
 ```html
+<!-- AVANT (développement local) -->
+<meta name="api-base-url" content="">
+
+<!-- APRÈS (production — pointer vers le backend Render) -->
 <meta name="api-base-url" content="https://esikatok-api.onrender.com">
 ```
 
@@ -410,61 +450,132 @@ const response = await fetch(`${API_BASE_URL}/api/v1/videos/`, {
 });
 ```
 
-#### Étape B.3 — Créer le fichier `_redirects`
+#### Étape B.3 — Créer le fichier `render.yaml` (optionnel, pour auto-deploy)
 
-Ce fichier est nécessaire pour que Netlify redirige toutes les routes vers `index.html` (comportement SPA) :
+Ce fichier permet à Render de détecter automatiquement la configuration :
 
-```
-/*    /index.html   200
-```
-
-#### Étape B.4 — Créer le fichier `netlify.toml`
-
-```toml
-[build]
-  publish = "."
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+```yaml
+services:
+  - type: web
+    name: esikatok-frontend
+    runtime: static
+    buildCommand: ""
+    staticPublishPath: .
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
 ```
 
-#### Étape B.5 — Déployer sur Netlify
+> **Note** : ce fichier est optionnel. Vous pouvez aussi configurer tout manuellement dans le dashboard Render (étape suivante).
 
-1. Se connecter sur [netlify.com](https://app.netlify.com) → **Add new site** → **Import an existing project**
-2. Connecter GitHub et sélectionner le dépôt `esikatok-frontend`
-3. Paramètres de build :
-   - **Branch to deploy** : `main`
-   - **Build command** : *(laisser vide — c'est du HTML/JS pur, pas de build)*
-   - **Publish directory** : `.`
-4. Cliquer **Deploy site**
-5. Une fois déployé, Netlify attribue une URL comme `https://random-name.netlify.app`
-6. **Renommer le site** : aller dans **Site settings** → **Change site name** → `esikatok`
-   - L'URL devient : `https://esikatok.netlify.app`
+#### Étape B.4 — Créer le Static Site sur Render
 
-#### Étape B.6 — Déployer le frontend Admin (même procédure)
+1. Se connecter sur [render.com](https://render.com) → cliquer **New** → **Static Site**
+2. Connecter votre compte GitHub et sélectionner le dépôt `esikatok-frontend`
+3. Remplir les paramètres :
+   - **Name** : `esikatok-frontend`
+   - **Branch** : `main`
+   - **Root Directory** : *(laisser vide — la racine du dépôt)*
+   - **Build Command** : *(laisser vide — c'est du HTML/JS pur, pas de build nécessaire)*
+   - **Publish Directory** : `.`
+4. Cliquer **Create Static Site**
+5. Render déploie le site en quelques secondes
+6. L'URL attribuée sera : `https://esikatok-frontend.onrender.com`
 
-Répéter les étapes B.1 à B.5 pour le frontend administration :
+#### Étape B.5 — Configurer le Rewrite SPA (très important)
+
+Votre frontend est un SPA (Single Page Application) : toutes les routes doivent renvoyer vers `index.html`.
+
+1. Dans le dashboard Render du Static Site, aller dans **Redirects/Rewrites**
+2. Ajouter une règle de **Rewrite** :
+   - **Source** : `/*`
+   - **Destination** : `/index.html`
+   - **Action** : `Rewrite`
+3. Cliquer **Save Changes**
+
+> **Sans cette règle**, un utilisateur qui accède directement à une URL comme `https://esikatok-frontend.onrender.com/bien/123` verra une erreur 404 au lieu de l'application.
+
+#### Étape B.6 — Ajouter un domaine personnalisé (optionnel)
+
+Si vous avez un nom de domaine (ex. `esikatok.com`) :
+
+1. Dashboard Render → Static Site → **Settings** → **Custom Domains**
+2. Cliquer **Add Custom Domain** → entrer `esikatok.com`
+3. Render vous donne un enregistrement DNS à ajouter :
+   - **Type** : `CNAME`
+   - **Nom** : `@` ou `www`
+   - **Valeur** : `esikatok-frontend.onrender.com`
+4. Ajouter cet enregistrement chez votre registrar DNS (OVH, Namecheap, Cloudflare, etc.)
+5. Render génère automatiquement un certificat SSL (HTTPS gratuit via Let's Encrypt)
+
+#### Étape B.7 — Vérifier la structure du frontend Admin (déjà extrait)
+
+Le dossier `esikatok-admin/` est prêt avec cette structure :
 
 ```
 esikatok-admin/
-├── index.html                  ← copie de templates/administration/index.html
-├── js/                         ← copie de static/administration/js/
-├── _redirects
-└── netlify.toml
+├── .gitignore
+├── index.html                  ← SPA admin (HTML pur, sans tags Django)
+├── js/                         ← 19 fichiers JavaScript
+│   ├── admin-api.js            ← Client API admin
+│   ├── admin-composants.js     ← Composants réutilisables admin
+│   ├── admin-app.js            ← Routeur principal admin
+│   ├── admin-page-connexion.js
+│   ├── admin-page-tableau-de-bord.js
+│   ├── admin-page-moderation.js
+│   ├── admin-page-utilisateurs.js
+│   ├── admin-page-agents.js
+│   ├── admin-page-biens.js
+│   ├── admin-page-abonnements.js
+│   ├── admin-page-boosts.js
+│   ├── admin-page-messagerie.js
+│   ├── admin-page-annonces.js
+│   ├── admin-page-preoccupations.js
+│   ├── admin-page-administrateurs.js
+│   ├── admin-page-activites.js
+│   ├── admin-page-finances.js
+│   ├── admin-page-parametres.js
+│   └── admin-pages.js
+├── images/                     ← Logos SVG
+│   ├── logo-compact.svg
+│   ├── logo-complet.svg
+│   └── logo-monochrome.svg
+└── render.yaml                 ← Configuration Render (auto-détection)
 ```
 
-URL finale : `https://esikatok-admin.netlify.app`
+Pour pousser sur GitHub :
 
-#### Alternative : Déployer le frontend sur Render (Static Site)
+```bash
+cd esikatok-admin
+git init
+git add .
+git commit -m "Initial commit - Frontend Admin EsikaTok"
 
-Si vous préférez tout garder sur Render :
+# Créer un dépôt sur GitHub (https://github.com/new), puis :
+git remote add origin https://github.com/VOTRE-COMPTE/esikatok-admin.git
+git branch -M main
+git push -u origin main
+```
 
-1. **New** → **Static Site** → connecter le repo frontend
-2. **Publish Directory** : `.`
-3. **Build Command** : *(laisser vide)*
-4. Ajouter une règle de rewrite dans les settings : `/*` → `/index.html` (status 200)
+Sur Render : **New** → **Static Site** → sélectionner `esikatok-admin` → mêmes paramètres que B.4 et B.5.
+
+URL finale : `https://esikatok-admin.onrender.com`
+
+> **Important** : avant de déployer, mettre à jour la balise meta API dans `index.html` :
+> ```html
+> <meta name="api-base-url" content="https://esikatok-api.onrender.com">
+> ```
+
+#### Récapitulatif des 3 services Render
+
+| Service | Type | Dépôt GitHub | URL Render |
+|---|---|---|---|
+| **Backend API** | Web Service | `esikatok-backend` | `https://esikatok-api.onrender.com` |
+| **Frontend Utilisateur** | Static Site | `esikatok-frontend` | `https://esikatok-frontend.onrender.com` |
+| **Frontend Admin** | Static Site | `esikatok-admin` | `https://esikatok-admin.onrender.com` |
+
+> **Avantage de tout garder sur Render** : un seul dashboard pour gérer les 3 services + la base PostgreSQL. Déploiement automatique à chaque `git push` sur `main`.
 
 ---
 
@@ -591,16 +702,18 @@ Quand un agent upload une vidéo :
 
 #### 1. Mettre à jour CORS côté backend
 
-Les variables `CORS_ALLOWED_ORIGINS` et `CSRF_TRUSTED_ORIGINS` doivent contenir les domaines exacts de vos frontends :
+Les variables `CORS_ALLOWED_ORIGINS` et `CSRF_TRUSTED_ORIGINS` sur Render doivent contenir les domaines exacts de vos frontends Render :
 
 ```
-CORS_ALLOWED_ORIGINS=https://esikatok.netlify.app,https://esikatok-admin.netlify.app
-CSRF_TRUSTED_ORIGINS=https://esikatok.netlify.app,https://esikatok-admin.netlify.app,https://esikatok-api.onrender.com
+CORS_ALLOWED_ORIGINS=https://esikatok-frontend.onrender.com,https://esikatok-admin.onrender.com
+CSRF_TRUSTED_ORIGINS=https://esikatok-frontend.onrender.com,https://esikatok-admin.onrender.com,https://esikatok-api.onrender.com
 ```
+
+> Si vous ajoutez un domaine personnalisé plus tard (ex. `esikatok.com`), ajoutez-le aussi dans ces variables.
 
 #### 2. Mettre à jour l'URL API côté frontend
 
-Dans chaque `index.html` frontend :
+Dans chaque `index.html` des deux frontends (utilisateur + admin) :
 
 ```html
 <meta name="api-base-url" content="https://esikatok-api.onrender.com">
@@ -613,13 +726,42 @@ Le frontend ne passe **pas** par le backend pour lire les vidéos. Il utilise di
 #### 4. Flux complet d'un utilisateur
 
 ```
-1. L'utilisateur ouvre https://esikatok.netlify.app
-2. Le frontend charge index.html depuis Netlify (rapide, CDN mondial)
+1. L'utilisateur ouvre https://esikatok-frontend.onrender.com
+2. Le frontend charge index.html depuis Render Static Site (CDN mondial)
 3. Le JS appelle https://esikatok-api.onrender.com/api/v1/biens/fil/
-4. Le backend répond avec la liste des biens + URLs vidéo S3
-5. Le frontend affiche les vidéos directement depuis S3/CDN
-6. L'utilisateur se connecte → le JWT est stocké en mémoire
-7. Les appels authentifiés envoient le JWT dans le header Authorization
+4. Le backend (Web Service Render) interroge PostgreSQL (Render)
+5. Le backend répond avec la liste des biens + URLs vidéo S3/CDN
+6. Le frontend affiche les vidéos directement depuis S3/CDN (ex. Wasabi)
+7. L'utilisateur se connecte → le JWT est stocké en mémoire
+8. Les appels authentifiés envoient le JWT dans le header Authorization
+```
+
+#### 5. Schéma des communications entre services
+
+```
+┌──────────────────────────────┐
+│  Navigateur de l'utilisateur │
+└──────┬──────────┬────────────┘
+       │ (1)      │ (5)
+       │ HTML/JS  │ <video src="https://s3...">
+       ▼          ▼
+┌─────────────┐  ┌────────────────────┐
+│ Render      │  │ Wasabi / Backblaze │
+│ Static Site │  │ S3 (vidéos)        │
+│ (frontend)  │  └────────────────────┘
+└─────────────┘           ▲
+       │ (2)              │ (4) upload vidéo
+       │ fetch(/api/v1/)  │
+       ▼                  │
+┌─────────────────────────┴──┐
+│ Render Web Service         │
+│ (backend Django + Gunicorn)│
+│         │                  │
+│    ┌────▼─────┐            │
+│    │PostgreSQL│            │
+│    │ (Render) │            │
+│    └──────────┘            │
+└────────────────────────────┘
 ```
 
 ---
@@ -632,9 +774,10 @@ Le frontend ne passe **pas** par le backend pour lire les vidéos. Il utilise di
 - [ ] **Health check OK** : `https://esikatok-api.onrender.com/api/health/` → `{"status": "ok"}`
 - [ ] **Bucket S3 créé** (Wasabi ou Backblaze) avec accès public en lecture
 - [ ] **Variables S3 configurées** sur Render (`STORAGE_BACKEND=s3`, etc.)
-- [ ] **Frontend utilisateur déployé sur Netlify** avec `api-base-url` pointant vers Render
-- [ ] **Frontend admin déployé sur Netlify** avec `api-base-url` pointant vers Render
-- [ ] **CORS et CSRF configurés** côté backend avec les domaines Netlify
+- [ ] **Frontend utilisateur déployé sur Render Static Site** avec `api-base-url` pointant vers le backend
+- [ ] **Frontend admin déployé sur Render Static Site** avec `api-base-url` pointant vers le backend
+- [ ] **Rewrite SPA configuré** sur chaque Static Site (`/*` → `/index.html`)
+- [ ] **CORS et CSRF configurés** côté backend avec les domaines `.onrender.com` des frontends
 - [ ] **Test complet** : inscription → connexion → upload vidéo → lecture vidéo → messagerie
 
 ---
