@@ -90,11 +90,17 @@ class StockageExterneS3(StockageVideoBase):
     def sauvegarder(self, fichier, nom_fichier=None):
         nom = nom_fichier or self.generer_nom_fichier(fichier.name)
         cle = f"videos/{nom}"
+        # Rembobiner le fichier au début (Django peut avoir déjà lu le fichier)
+        if hasattr(fichier, 'seek'):
+            fichier.seek(0)
         self.client.upload_fileobj(
             fichier,
             self.bucket,
             cle,
-            ExtraArgs={'ContentType': getattr(fichier, 'content_type', 'video/mp4')},
+            ExtraArgs={
+                'ContentType': getattr(fichier, 'content_type', 'video/mp4'),
+                'ACL': 'public-read',
+            },
         )
         return cle
 
