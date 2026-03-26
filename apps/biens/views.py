@@ -19,6 +19,7 @@ from .serializers import (
 )
 from apps.comptes.permissions import EstAgent, EstProprietaireBien
 from apps.videos.models import Video
+from apps.videos.stockage import obtenir_backend_stockage
 from apps.moderation.models import SoumissionModeration
 
 
@@ -122,11 +123,19 @@ class VueCreationBien(APIView):
             if erreur_video:
                 bien.delete()
                 return Response({'erreur': erreur_video}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Upload via le backend de stockage (S3 en prod, local en dev)
+            backend = obtenir_backend_stockage()
+            cle = backend.sauvegarder(fichier_video)
+            url = backend.obtenir_url(cle)
+
             Video.objects.create(
                 bien=bien,
                 agent=request.user,
-                fichier_video=fichier_video,
+                url_externe=url,
+                cle_stockage=cle,
                 taille_octets=fichier_video.size,
+                format_video=fichier_video.content_type.split('/')[-1],
                 miniature=request.FILES.get('miniature'),
             )
 
@@ -240,12 +249,28 @@ class VueEditionBien(APIView):
             erreur_video = _valider_fichier_video(fichier_video)
             if erreur_video:
                 return Response({'erreur': erreur_video}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Supprimer l'ancien fichier S3 si existant
+            backend = obtenir_backend_stockage()
+            ancienne_video = Video.objects.filter(bien=bien).first()
+            if ancienne_video and ancienne_video.cle_stockage:
+                try:
+                    backend.supprimer(ancienne_video.cle_stockage)
+                except Exception:
+                    pass
+
+            # Upload du nouveau fichier
+            cle = backend.sauvegarder(fichier_video)
+            url = backend.obtenir_url(cle)
+
             Video.objects.update_or_create(
                 bien=bien,
                 defaults={
                     'agent': request.user,
-                    'fichier_video': fichier_video,
+                    'url_externe': url,
+                    'cle_stockage': cle,
                     'taille_octets': fichier_video.size,
+                    'format_video': fichier_video.content_type.split('/')[-1],
                 }
             )
 
