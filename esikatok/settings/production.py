@@ -1,8 +1,9 @@
-"""
-Configuration production pour EsikaTok.
+
+"""Configuration production pour EsikaTok.
 Toutes les valeurs sensibles sont lues depuis les variables d'environnement.
-Ce fichier renforce la sécurité par rapport à base.py.
-"""
+Ce fichier renforce la sécurité par rapport à base.py."""
+
+import dj_database_url
 from decouple import config, Csv
 from .base import *  # noqa: F401,F403
 
@@ -11,21 +12,35 @@ DEBUG = False
 # =============================================================================
 # Base de données PostgreSQL production
 # =============================================================================
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME', default='esikatok_db'),
-        'USER': config('DB_USER', default='esikatok_user'),
-        'PASSWORD': config('DB_PASSWORD', default=''),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='5432'),
-        'CONN_MAX_AGE': 600,
-        'OPTIONS': {
-            'connect_timeout': 10,
-            'sslmode': 'require',
-        },
+# Méthode recommandée par Render : utiliser DATABASE_URL (inclut SSL)
+# Fallback sur les variables individuelles si DATABASE_URL n'est pas définie
+_database_url = config('DATABASE_URL', default='')
+
+if _database_url:
+    DATABASES = {
+        'default': dj_database_url.parse(
+            _database_url,
+            conn_max_age=600,
+            conn_health_checks=True,
+            ssl_require=True,
+        )
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('DB_NAME', default='esikatok_db'),
+            'USER': config('DB_USER', default='esikatok_user'),
+            'PASSWORD': config('DB_PASSWORD', default=''),
+            'HOST': config('DB_HOST', default='localhost'),
+            'PORT': config('DB_PORT', default='5432'),
+            'CONN_MAX_AGE': 600,
+            'OPTIONS': {
+                'connect_timeout': 10,
+                'sslmode': 'require',
+            },
+        }
+    }
 
 # =============================================================================
 # CORS production (depuis variables d'environnement)
