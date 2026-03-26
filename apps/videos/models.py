@@ -76,9 +76,19 @@ class Video(models.Model):
 
     @property
     def url_lecture(self):
-        """Retourne l'URL de lecture de la vidéo (locale ou externe)."""
+        """Retourne l'URL de lecture de la vidéo (presigned S3 ou locale)."""
+        # Priorité 1 : générer une URL pré-signée S3 via la clé de stockage
+        if self.cle_stockage:
+            try:
+                from apps.videos.stockage import obtenir_backend_stockage
+                backend = obtenir_backend_stockage()
+                return backend.obtenir_url(self.cle_stockage)
+            except Exception:
+                pass
+        # Priorité 2 : URL externe statique (fallback)
         if self.url_externe:
             return self.url_externe
+        # Priorité 3 : fichier local (dev uniquement)
         if self.fichier_video:
             return self.fichier_video.url
         return ''

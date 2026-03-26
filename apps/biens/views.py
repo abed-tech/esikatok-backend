@@ -1,12 +1,15 @@
 """
 Vues API pour les biens immobiliers EsikaTok.
 """
+import logging
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 from django.conf import settings
 
@@ -125,9 +128,17 @@ class VueCreationBien(APIView):
                 return Response({'erreur': erreur_video}, status=status.HTTP_400_BAD_REQUEST)
 
             # Upload via le backend de stockage (S3 en prod, local en dev)
-            backend = obtenir_backend_stockage()
-            cle = backend.sauvegarder(fichier_video)
-            url = backend.obtenir_url(cle)
+            try:
+                backend = obtenir_backend_stockage()
+                cle = backend.sauvegarder(fichier_video)
+                url = backend.obtenir_url(cle)
+            except Exception as e:
+                logger.error(f'Erreur upload vidéo S3: {e}')
+                bien.delete()
+                return Response(
+                    {'erreur': f'Erreur lors de l\'upload de la vidéo: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
 
             Video.objects.create(
                 bien=bien,
@@ -260,8 +271,15 @@ class VueEditionBien(APIView):
                     pass
 
             # Upload du nouveau fichier
-            cle = backend.sauvegarder(fichier_video)
-            url = backend.obtenir_url(cle)
+            try:
+                cle = backend.sauvegarder(fichier_video)
+                url = backend.obtenir_url(cle)
+            except Exception as e:
+                logger.error(f'Erreur upload vidéo S3 (édition): {e}')
+                return Response(
+                    {'erreur': f'Erreur lors de l\'upload de la vidéo: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
 
             Video.objects.update_or_create(
                 bien=bien,

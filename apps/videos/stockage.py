@@ -99,18 +99,16 @@ class StockageExterneS3(StockageVideoBase):
             cle,
             ExtraArgs={
                 'ContentType': getattr(fichier, 'content_type', 'video/mp4'),
-                'ACL': 'public-read',
             },
         )
         return cle
 
     def obtenir_url(self, cle_stockage):
-        if self.cdn_url:
-            return f"{self.cdn_url.rstrip('/')}/{cle_stockage}"
+        # Toujours utiliser des URLs pré-signées (pas besoin d'accès public)
         return self.client.generate_presigned_url(
             'get_object',
             Params={'Bucket': self.bucket, 'Key': cle_stockage},
-            ExpiresIn=3600,
+            ExpiresIn=604800,  # 7 jours
         )
 
     def supprimer(self, cle_stockage):
