@@ -7,11 +7,17 @@ Plateforme de vidéos courtes immobilières inspirée de TikTok, dédiée au mar
 ## Table des matières
 
 1. [Architecture](#architecture)
-2. [Structure du projet](#structure-du-projet)
+2. [Structure du backend](#structure-du-backend)
 3. [Installation locale](#installation-locale)
 4. [Configuration par environnement](#configuration-par-environnement)
 5. [Variables d'environnement](#variables-denvironnement)
 6. [Déploiement en production](#déploiement-en-production)
+   - [A. Backend sur Render](#a-déployer-le-backend-sur-render-étape-par-étape)
+   - [B. Frontends sur Render Static Site](#b-déployer-les-frontends-sur-render-static-site-dépôts-séparés)
+   - [C. Stockage vidéo S3](#c-héberger-les-vidéos-sur-un-stockage-s3-étape-par-étape)
+   - [D. Connexion des services](#d-garder-tout-connecté--récapitulatif)
+   - [E. Checklist finale](#e-checklist-finale-de-déploiement)
+   - [F. Déploiement VPS alternatif](#f-déploiement-alternatif-sur-vps-ubuntu--nginx)
 7. [Sécurité](#sécurité)
 8. [API Endpoints](#api-endpoints-v1)
 9. [Comptes de démonstration](#comptes-de-démonstration)
@@ -46,11 +52,29 @@ Plateforme de vidéos courtes immobilières inspirée de TikTok, dédiée au mar
 - **Base de données** : SQLite (local) / PostgreSQL (production)
 - **Stockage vidéo** : Local (dev) / S3-compatible (production)
 - **Serveur WSGI** : Gunicorn + WhiteNoise
-- **Les 3 services (backend, frontend user, frontend admin) peuvent être déployés séparément**
+- **Les 3 services (backend, frontend user, frontend admin) sont déployés séparément sur Render**
+
+### Architecture des dépôts (3 repos GitHub → 3 services Render)
+
+```
+EsikaTok/                              ← Dossier de travail local
+├── backend/                           ← Dépôt 1 → Render Web Service (API)
+├── esikatok-frontend/                 ← Dépôt 2 → Render Static Site (SPA Utilisateur)
+│   ├── index.html                     (SEO renforcé, Open Graph, JSON-LD, PWA)
+│   ├── manifest.json, robots.txt, sitemap.xml
+│   ├── js/ (19 fichiers)
+│   ├── images/ (logos + og-cover)
+│   └── render.yaml
+└── esikatok-admin/                    ← Dépôt 3 → Render Static Site (SPA Admin)
+    ├── index.html                     (noindex, nofollow)
+    ├── js/ (19 fichiers)
+    ├── images/ (logos)
+    └── render.yaml
+```
 
 ---
 
-## Structure du projet
+## Structure du backend
 
 ```
 backend/
@@ -169,13 +193,15 @@ Copier `.env.example` vers `.env` et remplir les valeurs.
 
 | Variable | Description | Exemple |
 |----------|-------------|---------|
+| `DJANGO_SETTINGS_MODULE` | **Obligatoire sur Render** — active la config production | `esikatok.settings.production` |
 | `DJANGO_SECRET_KEY` | Clé secrète Django (unique, longue, aléatoire) | Générer avec `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"` |
-| `ALLOWED_HOSTS` | Domaines autorisés (CSV) | `esikatok.com,www.esikatok.com` |
+| `ALLOWED_HOSTS` | Domaines autorisés (CSV) | `esikatok-api.onrender.com` |
 | `DB_NAME` | Nom de la base PostgreSQL | `esikatok_db` |
 | `DB_USER` | Utilisateur PostgreSQL | `esikatok_user` |
 | `DB_PASSWORD` | Mot de passe PostgreSQL | `********` |
-| `DB_HOST` | Hôte PostgreSQL | `localhost` ou URL du service |
-| `CORS_ALLOWED_ORIGINS` | Origines CORS autorisées (CSV) | `https://esikatok.com,https://admin.esikatok.com` |
+| `DB_HOST` | Hôte PostgreSQL | `dpg-xxxxx-a.frankfurt-postgres.render.com` |
+| `CORS_ALLOWED_ORIGINS` | Origines CORS autorisées (CSV) | `https://esikatok-frontend.onrender.com,https://esikatok-admin.onrender.com` |
+| `CSRF_TRUSTED_ORIGINS` | Origines CSRF de confiance (CSV) | `https://esikatok-frontend.onrender.com,https://esikatok-admin.onrender.com,https://esikatok-api.onrender.com` |
 
 ### Optionnelles
 
@@ -209,14 +235,16 @@ Copier `.env.example` vers `.env` et remplir les valeurs.
 ```
 ┌─────────────────────────┐    HTTPS / JWT     ┌──────────────────────────┐
 │   Frontend Utilisateur  │ ◄────────────────► │   Backend API (Django)   │
-│   Netlify / Render      │    API REST v1     │   Render Web Service     │
-│   esikatok.netlify.app  │                    │   esikatok-api.onrender  │
-└─────────────────────────┘                    └────────┬─────┬───────────┘
+│   Render Static Site    │    API REST v1     │   Render Web Service     │
+│   esikatok-frontend     │                    │   esikatok-api.onrender  │
+│   .onrender.com         │                    └────────┬─────┬───────────┘
+└─────────────────────────┘                             │     │
                                                         │     │
 ┌─────────────────────────┐    HTTPS / JWT     ┌────────▼──┐  │
 │   Frontend Admin        │ ◄────────────────► │ PostgreSQL│  │
-│   Netlify / Render      │    API REST v1     │  (Render) │  │
-│   esikatok-admin.net... │                    └───────────┘  │
+│   Render Static Site    │    API REST v1     │  (Render) │  │
+│   esikatok-admin        │                    └───────────┘  │
+│   .onrender.com         │                                   │
 └─────────────────────────┘                                   │
                                                     ┌─────────▼──────────┐
                                                     │  Stockage Vidéo    │
@@ -259,7 +287,7 @@ git commit -m "Initial commit - Backend EsikaTok"
 # Créer un dépôt sur GitHub, puis :
 git remote add origin https://github.com/VOTRE-COMPTE/esikatok-backend.git
 git branch -M main
-git push -u origin maingit 
+git push -u origin main
 ```
 
 > **Important** : vérifiez que `.env` est bien dans `.gitignore` et n'est jamais commité.
@@ -381,7 +409,11 @@ Le dossier `esikatok-frontend/` est prêt avec cette structure :
 ```
 esikatok-frontend/
 ├── .gitignore
-├── index.html                  ← SPA utilisateur (HTML pur, sans tags Django)
+├── index.html                  ← SPA utilisateur (SEO renforcé, sans tags Django)
+├── manifest.json               ← PWA manifest (installable sur mobile)
+├── robots.txt                  ← Guide les crawlers Google/Bing
+├── sitemap.xml                 ← Plan de site pour référencement
+├── render.yaml                 ← Configuration Render (auto-détection)
 ├── js/                         ← 19 fichiers JavaScript
 │   ├── api.js                  ← Client API (fetch vers le backend)
 │   ├── etat.js                 ← Gestion de l'état global
@@ -402,14 +434,28 @@ esikatok-frontend/
 │   ├── page-agent.js           ← Espace agent
 │   ├── page-carte.js           ← Vue carte
 │   └── pages.js                ← Index des pages
-├── images/                     ← Logos SVG
-│   ├── logo-compact.svg
-│   ├── logo-complet.svg
-│   └── logo-monochrome.svg
-└── render.yaml                 ← Configuration Render (auto-détection)
+└── images/                     ← Logos + image OG (partage réseaux sociaux)
+    ├── logo-compact.svg        ← Favicon + apple-touch-icon
+    ├── logo-complet.svg
+    ├── logo-monochrome.svg
+    └── og-cover.svg            ← Image de partage (créer un PNG 1200×630 pour production)
 ```
 
 > **Important** : les tags Django `{% static '...' %}` ont été remplacés par des chemins relatifs (`js/...`). Le fichier est prêt pour un hébergement statique.
+
+**SEO intégré dans `index.html`** :
+- **Title optimisé** : `EsikaTok — L'immobilier en vidéo courte | Achat, Location, Terrain en RDC`
+- **Meta description** riche (30+ mots, mots-clés ciblés RDC/Kinshasa)
+- **Open Graph** complet (Facebook, WhatsApp, Telegram, LinkedIn)
+- **Twitter Card** (`summary_large_image`)
+- **JSON-LD Structured Data** (`WebApplication` + `RealEstateApplication`)
+- **Canonical URL**, **keywords**, **robots** directives avancées
+- **Favicon** SVG + **apple-touch-icon** + **manifest.json** (PWA installable)
+- **`<noscript>`** : contenu HTML riche pour les crawlers qui n'exécutent pas JavaScript
+- **Preconnect** vers l'API backend pour accélérer les premières requêtes
+- **robots.txt** + **sitemap.xml** pour guider les moteurs de recherche
+
+> **Action requise** : créer un fichier `images/og-cover.png` (1200×630 px) pour le partage sur les réseaux sociaux. Les réseaux ne supportent pas le SVG. Utilisez Canva, Figma ou convertissez le `og-cover.svg` fourni.
 
 Pour pousser sur GitHub :
 
@@ -425,29 +471,21 @@ git branch -M main
 git push -u origin main
 ```
 
-#### Étape B.2 — Configurer l'URL de l'API dans le frontend
+#### Étape B.2 — URL de l'API (déjà configurée)
 
-Dans le fichier `index.html` du frontend, mettre à jour la balise meta pour pointer vers le backend Render :
+L'URL du backend est **déjà configurée** dans les deux frontends extraits :
 
 ```html
-<!-- AVANT (développement local) -->
-<meta name="api-base-url" content="">
-
-<!-- APRÈS (production — pointer vers le backend Render) -->
+<!-- esikatok-frontend/index.html ET esikatok-admin/index.html -->
 <meta name="api-base-url" content="https://esikatok-api.onrender.com">
 ```
 
-Puis dans le code JavaScript, s'assurer que tous les appels API utilisent cette URL :
+> **Comment ça fonctionne** : le module `api.js` (et `admin-api.js`) lit cette balise meta au démarrage et l'utilise comme préfixe pour tous les appels API. Si vous changez le domaine du backend (ex. domaine personnalisé), mettez à jour cette balise dans les deux `index.html`.
 
 ```javascript
-// Récupérer l'URL de l'API depuis la balise meta
-const API_BASE_URL = document.querySelector('meta[name="api-base-url"]')?.content
-                     || 'https://esikatok-api.onrender.com';
-
-// Exemple d'appel API
-const response = await fetch(`${API_BASE_URL}/api/v1/videos/`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-});
+// Lecture automatique dans api.js (aucune modification nécessaire)
+const _meta = document.querySelector('meta[name="api-base-url"]');
+const BASE_URL = (_cfg.API_BASE_URL || (_meta && _meta.content) || '').replace(/\/$/, '') + '/api/v1';
 ```
 
 #### Étape B.3 — Créer le fichier `render.yaml` (optionnel, pour auto-deploy)
@@ -562,10 +600,7 @@ Sur Render : **New** → **Static Site** → sélectionner `esikatok-admin` → 
 
 URL finale : `https://esikatok-admin.onrender.com`
 
-> **Important** : avant de déployer, mettre à jour la balise meta API dans `index.html` :
-> ```html
-> <meta name="api-base-url" content="https://esikatok-api.onrender.com">
-> ```
+> **Déjà fait** : la balise `<meta name="api-base-url" content="https://esikatok-api.onrender.com">` est déjà configurée dans `esikatok-admin/index.html`.
 
 #### Récapitulatif des 3 services Render
 
@@ -768,16 +803,30 @@ Le frontend ne passe **pas** par le backend pour lire les vidéos. Il utilise di
 
 ### E. Checklist finale de déploiement
 
-- [ ] **Code poussé sur GitHub** (backend + frontend en repos séparés)
+#### Préparation (déjà fait ✅)
+
+- [x] **Frontends extraits** du backend vers `esikatok-frontend/` et `esikatok-admin/`
+- [x] **Tags Django supprimés** — chemins relatifs (`js/...`, `images/...`) dans les deux `index.html`
+- [x] **URL API configurée** — `<meta name="api-base-url" content="https://esikatok-api.onrender.com">` dans les deux frontends
+- [x] **SEO renforcé** — Open Graph, Twitter Card, JSON-LD, robots.txt, sitemap.xml, manifest.json, noscript fallback
+- [x] **render.yaml** créé dans chaque frontend (rewrite SPA `/*` → `/index.html`)
+- [x] **Bug ALLOWED_HOSTS corrigé** dans `base.py`
+- [x] **CORS/CSRF defaults corrigés** dans `production.py` (URLs Render au lieu d'URL GitHub)
+- [x] **`.env.example` complété** avec `DJANGO_SETTINGS_MODULE` et `CSRF_TRUSTED_ORIGINS`
+
+#### Déploiement (à faire)
+
+- [ ] **Créer `images/og-cover.png`** (1200×630 px) pour le partage sur les réseaux sociaux
+- [ ] **Pousser le backend sur GitHub** → créer le Web Service sur Render
 - [ ] **Base PostgreSQL créée sur Render** et infos notées
-- [ ] **Web Service backend créé sur Render** avec toutes les variables d'environnement
+- [ ] **Toutes les variables d'environnement configurées** sur Render (voir étape A.4)
 - [ ] **Health check OK** : `https://esikatok-api.onrender.com/api/health/` → `{"status": "ok"}`
+- [ ] **Charger les données initiales** : `python manage.py charger_localisations` puis `python manage.py creer_donnees_demo` (via Render Shell)
 - [ ] **Bucket S3 créé** (Wasabi ou Backblaze) avec accès public en lecture
 - [ ] **Variables S3 configurées** sur Render (`STORAGE_BACKEND=s3`, etc.)
-- [ ] **Frontend utilisateur déployé sur Render Static Site** avec `api-base-url` pointant vers le backend
-- [ ] **Frontend admin déployé sur Render Static Site** avec `api-base-url` pointant vers le backend
-- [ ] **Rewrite SPA configuré** sur chaque Static Site (`/*` → `/index.html`)
-- [ ] **CORS et CSRF configurés** côté backend avec les domaines `.onrender.com` des frontends
+- [ ] **Pousser `esikatok-frontend` sur GitHub** → créer le Static Site sur Render
+- [ ] **Pousser `esikatok-admin` sur GitHub** → créer le Static Site sur Render
+- [ ] **Rewrite SPA vérifié** sur chaque Static Site (`/*` → `/index.html`)
 - [ ] **Test complet** : inscription → connexion → upload vidéo → lecture vidéo → messagerie
 
 ---

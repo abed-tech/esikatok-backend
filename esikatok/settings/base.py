@@ -18,7 +18,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # =============================================================================
 SECRET_KEY = config('DJANGO_SECRET_KEY', default='dev-insecure-key-pour-developpement-local-uniquement')
 DEBUG = False
-ALLOWED_HOSTS = config('ALLOWED_HOSTS' '*.onrender.com', default='localhost,127.0.0.1', cast=Csv())
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
 
 # =============================================================================
 # Applications installées

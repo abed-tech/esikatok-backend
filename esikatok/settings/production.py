@@ -32,7 +32,7 @@ DATABASES = {
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS',
-    default='https://github.com/abed-tech/esikatext.git',
+    default='https://esikatok-frontend.onrender.com,https://esikatok-admin.onrender.com',
     cast=Csv(),
 )
 
@@ -41,7 +41,7 @@ CORS_ALLOWED_ORIGINS = config(
 # =============================================================================
 CSRF_TRUSTED_ORIGINS = config(
     'CSRF_TRUSTED_ORIGINS',
-    default='https://esikatok.com,https://www.esikatok.com',
+    default='https://esikatok-frontend.onrender.com,https://esikatok-admin.onrender.com,https://esikatok-api.onrender.com',
     cast=Csv(),
 )
 
