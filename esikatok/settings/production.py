@@ -16,12 +16,13 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': config('DB_NAME', default='esikatok_db'),
         'USER': config('DB_USER', default='esikatok_user'),
-        'PASSWORD': config('DB_PASSWORD'),
+        'PASSWORD': config('DB_PASSWORD', default=''),
         'HOST': config('DB_HOST', default='localhost'),
         'PORT': config('DB_PORT', default='5432'),
         'CONN_MAX_AGE': 600,
         'OPTIONS': {
             'connect_timeout': 10,
+            'sslmode': 'require',
         },
     }
 }
