@@ -361,7 +361,7 @@ Dans l'onglet **Environment** du Web Service, ajouter chaque variable :
 | `VIDEO_S3_ENDPOINT` | *(endpoint S3)* | Voir section C |
 | `VIDEO_CDN_URL` | *(URL publique du bucket)* | Voir section C |
 | `SECURE_SSL_REDIRECT` | `true` | |
-| `ADMIN_PATH` | *(chemin secret)* | Ex. `/EsikaTok` ou un chemin personnalisé |
+| `ADMIN_PATH` | *(chemin secret)* | Ex. `gestion/EsikaTok` ou un chemin personnalisé |
 
 5. Cliquer **Create Web Service**. Render va :
    - Cloner le repo
