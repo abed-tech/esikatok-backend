@@ -44,11 +44,9 @@ class BienImmobilierListeSerializer(serializers.ModelSerializer):
 
     def get_miniature_url(self, obj):
         try:
-            if obj.video.miniature:
-                return obj.video.miniature.url
+            return obj.video.url_miniature
         except Exception:
-            pass
-        return ''
+            return ''
 
     def get_est_favori(self, obj):
         request = self.context.get('request')
@@ -93,11 +91,9 @@ class BienImmobilierDetailSerializer(serializers.ModelSerializer):
 
     def get_miniature_url(self, obj):
         try:
-            if obj.video.miniature:
-                return obj.video.miniature.url
+            return obj.video.url_miniature
         except Exception:
-            pass
-        return ''
+            return ''
 
     def get_est_favori(self, obj):
         request = self.context.get('request')

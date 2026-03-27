@@ -2,6 +2,9 @@
 # Script de build pour Render — EsikaTok Backend
 set -o errexit
 
+# 0. Installer ffmpeg (génération automatique de miniatures vidéo)
+apt-get update -qq && apt-get install -y --no-install-recommends ffmpeg || echo "⚠ ffmpeg non installé (miniatures désactivées)"
+
 # 1. Installer les dépendances Python
 pip install --upgrade pip
 pip install -r requirements.txt

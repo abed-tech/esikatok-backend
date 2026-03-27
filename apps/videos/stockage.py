@@ -32,6 +32,10 @@ class StockageVideoBase(ABC):
         extension = os.path.splitext(nom_original)[1] if nom_original else '.mp4'
         return f"{uuid.uuid4().hex}{extension}"
 
+    def sauvegarder_miniature(self, chemin_fichier, nom_fichier=None):
+        """Sauvegarde une miniature (fichier sur disque). Retourne la clé/chemin."""
+        raise NotImplementedError
+
 
 class StockageLocal(StockageVideoBase):
     """Stockage vidéo local sur le système de fichiers."""
@@ -55,6 +59,14 @@ class StockageLocal(StockageVideoBase):
         chemin = os.path.join(self.repertoire, cle_stockage)
         if os.path.exists(chemin):
             os.remove(chemin)
+
+    def sauvegarder_miniature(self, chemin_fichier, nom_fichier=None):
+        nom = nom_fichier or f"{uuid.uuid4().hex}.jpg"
+        dest = os.path.join(self.repertoire, 'miniatures', nom)
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        import shutil
+        shutil.copy2(chemin_fichier, dest)
+        return f"miniatures/{nom}"
 
 
 class StockageExterneS3(StockageVideoBase):
@@ -113,6 +125,19 @@ class StockageExterneS3(StockageVideoBase):
 
     def supprimer(self, cle_stockage):
         self.client.delete_object(Bucket=self.bucket, Key=cle_stockage)
+
+    def sauvegarder_miniature(self, chemin_fichier, nom_fichier=None):
+        """Upload une miniature (fichier local) vers S3."""
+        nom = nom_fichier or f"{uuid.uuid4().hex}.jpg"
+        cle = f"miniatures/{nom}"
+        with open(chemin_fichier, 'rb') as f:
+            self.client.upload_fileobj(
+                f,
+                self.bucket,
+                cle,
+                ExtraArgs={'ContentType': 'image/jpeg'},
+            )
+        return cle
 
 
 def obtenir_backend_stockage():

@@ -33,6 +33,7 @@ class Video(models.Model):
     url_externe = models.URLField('URL vidéo externe', blank=True, default='')
     cle_stockage = models.CharField('Clé de stockage externe', max_length=500, blank=True, default='')
     miniature = models.ImageField('Miniature', upload_to='videos/miniatures/', blank=True, null=True)
+    cle_miniature = models.CharField('Clé miniature S3', max_length=500, blank=True, default='')
 
     # --- Métadonnées ---
     duree_secondes = models.PositiveIntegerField('Durée (secondes)', default=0)
@@ -91,6 +92,25 @@ class Video(models.Model):
         # Priorité 3 : fichier local (dev uniquement)
         if self.fichier_video:
             return self.fichier_video.url
+        return ''
+
+    @property
+    def url_miniature(self):
+        """Retourne l'URL de la miniature (presigned S3 ou locale)."""
+        # Priorité 1 : clé S3 → presigned URL
+        if self.cle_miniature:
+            try:
+                from apps.videos.stockage import obtenir_backend_stockage
+                backend = obtenir_backend_stockage()
+                return backend.obtenir_url(self.cle_miniature)
+            except Exception:
+                pass
+        # Priorité 2 : ImageField local (dev)
+        if self.miniature:
+            try:
+                return self.miniature.url
+            except Exception:
+                pass
         return ''
 
     def supprimer_logiquement(self, admin, motif=''):

@@ -50,7 +50,7 @@ class ConversationSerializer(serializers.ModelSerializer):
     def get_bien_miniature(self, obj):
         if obj.bien and hasattr(obj.bien, 'video'):
             try:
-                return obj.bien.video.miniature.url if obj.bien.video.miniature else ''
+                return obj.bien.video.url_miniature
             except Exception:
                 return ''
         return ''

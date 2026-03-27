@@ -23,6 +23,7 @@ from .serializers import (
 from apps.comptes.permissions import EstAgent, EstProprietaireBien
 from apps.videos.models import Video
 from apps.videos.stockage import obtenir_backend_stockage
+from apps.videos.miniatures import generer_miniature_depuis_video, nettoyer_miniature_temp
 from apps.moderation.models import SoumissionModeration
 
 
@@ -140,11 +141,24 @@ class VueCreationBien(APIView):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
 
+            # Génération automatique de miniature
+            cle_mini = ''
+            chemin_mini = None
+            try:
+                chemin_mini, nom_mini = generer_miniature_depuis_video(fichier_video)
+                if chemin_mini:
+                    cle_mini = backend.sauvegarder_miniature(chemin_mini, nom_mini)
+            except Exception as e:
+                logger.warning(f'Miniature auto non générée: {e}')
+            finally:
+                nettoyer_miniature_temp(chemin_mini)
+
             Video.objects.create(
                 bien=bien,
                 agent=request.user,
                 url_externe=url,
                 cle_stockage=cle,
+                cle_miniature=cle_mini,
                 taille_octets=fichier_video.size,
                 format_video=fichier_video.content_type.split('/')[-1],
                 miniature=request.FILES.get('miniature'),
@@ -281,15 +295,31 @@ class VueEditionBien(APIView):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
 
+            # Génération automatique de miniature
+            cle_mini = ''
+            chemin_mini = None
+            try:
+                chemin_mini, nom_mini = generer_miniature_depuis_video(fichier_video)
+                if chemin_mini:
+                    cle_mini = backend.sauvegarder_miniature(chemin_mini, nom_mini)
+            except Exception as e:
+                logger.warning(f'Miniature auto non générée (édition): {e}')
+            finally:
+                nettoyer_miniature_temp(chemin_mini)
+
+            defaults = {
+                'agent': request.user,
+                'url_externe': url,
+                'cle_stockage': cle,
+                'taille_octets': fichier_video.size,
+                'format_video': fichier_video.content_type.split('/')[-1],
+            }
+            if cle_mini:
+                defaults['cle_miniature'] = cle_mini
+
             Video.objects.update_or_create(
                 bien=bien,
-                defaults={
-                    'agent': request.user,
-                    'url_externe': url,
-                    'cle_stockage': cle,
-                    'taille_octets': fichier_video.size,
-                    'format_video': fichier_video.content_type.split('/')[-1],
-                }
+                defaults=defaults,
             )
 
         miniature = request.FILES.get('miniature')
