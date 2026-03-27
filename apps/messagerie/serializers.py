@@ -32,16 +32,41 @@ class ConversationSerializer(serializers.ModelSerializer):
     agent = UtilisateurResumeSerializer(read_only=True)
     bien_titre = serializers.CharField(source='bien.titre', read_only=True, default='')
     bien_id = serializers.IntegerField(source='bien.id', read_only=True, default=None)
+    bien_miniature = serializers.SerializerMethodField()
+    bien_video_url = serializers.SerializerMethodField()
+    bien_prix = serializers.SerializerMethodField()
     dernier_message = serializers.SerializerMethodField()
     messages_non_lus = serializers.SerializerMethodField()
 
     class Meta:
         model = Conversation
         fields = [
-            'id', 'bien_titre', 'bien_id', 'initiateur', 'agent',
+            'id', 'bien_titre', 'bien_id', 'bien_miniature', 'bien_video_url', 'bien_prix',
+            'initiateur', 'agent',
             'est_active', 'dernier_message', 'messages_non_lus',
             'date_creation', 'date_dernier_message',
         ]
+
+    def get_bien_miniature(self, obj):
+        if obj.bien and hasattr(obj.bien, 'video'):
+            try:
+                return obj.bien.video.miniature.url if obj.bien.video.miniature else ''
+            except Exception:
+                return ''
+        return ''
+
+    def get_bien_video_url(self, obj):
+        if obj.bien and hasattr(obj.bien, 'video'):
+            try:
+                return obj.bien.video.url_lecture
+            except Exception:
+                return ''
+        return ''
+
+    def get_bien_prix(self, obj):
+        if obj.bien:
+            return f"{obj.bien.prix:,.0f} {obj.bien.devise or 'USD'}".replace(',', '.')
+        return ''
 
     def get_dernier_message(self, obj):
         msg = obj.messages.order_by('-date_envoi').first()

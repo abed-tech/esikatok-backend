@@ -61,7 +61,7 @@ class VueMesConversations(generics.ListAPIView):
     def get_queryset(self):
         return Conversation.objects.filter(
             Q(initiateur=self.request.user) | Q(agent=self.request.user)
-        ).select_related('initiateur', 'agent', 'bien').order_by('-date_dernier_message')
+        ).select_related('initiateur', 'agent', 'bien').prefetch_related('bien__video').order_by('-date_dernier_message')
 
 
 class VueCreerConversation(APIView):
@@ -125,7 +125,9 @@ class VueMessagesConversation(APIView):
 
     def get(self, request, conversation_id):
         try:
-            conversation = Conversation.objects.get(
+            conversation = Conversation.objects.select_related(
+                'initiateur', 'agent', 'bien'
+            ).prefetch_related('bien__video').get(
                 Q(id=conversation_id),
                 Q(initiateur=request.user) | Q(agent=request.user),
             )
